@@ -7,6 +7,50 @@ document.addEventListener('DOMContentLoaded', () => {
     const colorPickerModal = document.getElementById('color-picker-modal');
     const colorOptions = document.querySelector('.color-options');
 
+    // --- Three.js Flashy Background ---
+    const bgCanvas = document.getElementById('three-bg');
+    let renderer, scene, camera, flashyObject;
+
+    function initBackground() {
+        scene = new THREE.Scene();
+        camera = new THREE.PerspectiveCamera(
+            75,
+            window.innerWidth / window.innerHeight,
+            0.1,
+            1000
+        );
+        renderer = new THREE.WebGLRenderer({ canvas: bgCanvas, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+
+        const geometry = new THREE.TorusKnotGeometry(10, 3, 100, 16);
+        const material = new THREE.MeshNormalMaterial();
+        flashyObject = new THREE.Mesh(geometry, material);
+        scene.add(flashyObject);
+
+        const ambient = new THREE.AmbientLight(0xffffff, 0.8);
+        scene.add(ambient);
+
+        camera.position.z = 30;
+
+        window.addEventListener('resize', onWindowResize);
+    }
+
+    function onWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    function animateBackground() {
+        requestAnimationFrame(animateBackground);
+        flashyObject.rotation.x += 0.01;
+        flashyObject.rotation.y += 0.01;
+        renderer.render(scene, camera);
+    }
+
+    initBackground();
+    animateBackground();
+
     // --- Game State ---
     let deck = [];
     let playerHand = [];
