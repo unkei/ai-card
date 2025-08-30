@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UNNO</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>UNNO</h1>
+
+    <div id="game-board">
+        <div id="ai-hand" class="hand">
+            <!-- AIの手札 -->
+        </div>
+
+        <div id="deck-area">
+            <div id="deck" class="card back"></div>
+            <div id="discard-pile"></div>
+        </div>
+
+        <div id="player-hand" class="hand">
+            <!-- プレイヤーの手札 -->
+        </div>
+    </div>
+
+    <div id="color-picker-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3>Choose a color:</h3>
+            <div class="color-options">
+                <div class="color-option red" data-color="red"></div>
+                <div class="color-option yellow" data-color="yellow"></div>
+                <div class="color-option green" data-color="green"></div>
+                <div class="color-option blue" data-color="blue"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
