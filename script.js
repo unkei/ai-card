@@ -250,8 +250,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (turnEnds) {
             endTurn();
         } else {
-            // If the turn doesn't end (skip/reverse), re-render and wait for the next move
-            render();
+            // If the turn doesn't end (skip/reverse), the same player goes again.
+            // For the human player, just re-render and wait for input.
+            // For the AI, schedule another AI move.
+            if (player === 'ai') {
+                setTimeout(aiTurn, 600);
+            } else {
+                render();
+            }
         }
     }
 
