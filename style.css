@@ -173,6 +173,12 @@ h1 {
     box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
+/* Color picker circles */
+.color-option.red { background-color: #ff5555; }
+.color-option.yellow { background-color: #ffaa00; }
+.color-option.green { background-color: #55aa55; }
+.color-option.blue { background-color: #5555ff; }
+
 .color-option:hover {
     border-color: #333;
 }
