@@ -72,7 +72,7 @@ h1 {
     display: flex;
     justify-content: center;
     align-items: center;
-    font-size: 24px;
+    font-size: 36px;
     font-weight: bold;
     cursor: pointer;
 }
@@ -104,6 +104,23 @@ h1 {
 .card.wild {
     background: conic-gradient(red, yellow, lime, aqua, blue, magenta, red);
     color: white;
+}
+
+/* Improve readability of white text on colored cards */
+.card.red,
+.card.yellow,
+.card.green,
+.card.blue,
+.card.wild {
+    text-shadow:
+        -1px -1px 0 rgba(0,0,0,0.9),
+         1px -1px 0 rgba(0,0,0,0.9),
+        -1px  1px 0 rgba(0,0,0,0.9),
+         1px  1px 0 rgba(0,0,0,0.9),
+         0px -1px 0 rgba(0,0,0,0.9),
+         1px  0px 0 rgba(0,0,0,0.9),
+        -1px  0px 0 rgba(0,0,0,0.9),
+         0px  1px 0 rgba(0,0,0,0.9);
 }
 
 /* Hand layout */
@@ -174,7 +191,7 @@ h1 {
     .card {
         width: 60px;
         height: 90px;
-        font-size: 18px;
+        font-size: 24px;
     }
 
     #discard-pile, #deck {
@@ -209,7 +226,7 @@ h1 {
     .card {
         width: 45px;
         height: 70px;
-        font-size: 14px;
+        font-size: 20px;
     }
 
     #discard-pile, #deck {
