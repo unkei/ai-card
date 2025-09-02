@@ -264,7 +264,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Do not endTurn here; after picking color we keep the same player's turn
                 } else {
                     chosenColor = chooseBestColorForAI();
-                    // Keep AI's turn and schedule next AI move
+                    // Reflect chosen color immediately, then keep AI's turn and schedule next move
+                    render();
                     setTimeout(aiTurn, 600);
                 }
                 return;
@@ -281,6 +282,8 @@ document.addEventListener('DOMContentLoaded', () => {
             // For the human player, just re-render and wait for input.
             // For the AI, schedule another AI move.
             if (player === 'ai') {
+                // Show the just-played card/color immediately, then continue AI's chain
+                render();
                 setTimeout(aiTurn, 600);
             } else {
                 render();
