@@ -143,9 +143,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const topCard = discardPile[discardPile.length - 1];
         if (topCard) {
             const topCardElement = createCardElement(topCard);
-            // If the top card is a wild card that has been colored, show the chosen color
+            // If the top card is a wild card that has been colored, show the chosen solid color
             if (topCard.color === 'wild' && chosenColor) {
-                 topCardElement.style.backgroundColor = chosenColor;
+                topCardElement.style.background = chosenColor;
             }
             discardPileElement.appendChild(topCardElement);
         }
@@ -185,12 +185,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function isValidPlay(card) {
         const topCard = discardPile[discardPile.length - 1];
-        if (card.color === 'wild') return true;
+        const activeHand = isPlayerTurn ? playerHand : aiHand;
+        // Wild Draw 4: only playable if no card of the current color exists in active hand
         if (card.value === 'wild_draw4') {
-             // Check if player has any other card with the same color as the top card
-             const canPlayOtherCard = playerHand.some(c => c.color === chosenColor);
-             return !canPlayOtherCard;
+            const canPlayOtherCard = activeHand.some(c => c.color === chosenColor);
+            return !canPlayOtherCard;
         }
+        // Plain Wild: always playable
+        if (card.color === 'wild') return true;
+        // Normal color/number/action: match color in effect or same value
         return card.color === chosenColor || card.value === topCard.value;
     }
 
@@ -334,15 +337,13 @@ document.addEventListener('DOMContentLoaded', () => {
         hideColorPicker();
         if (colorPickKeepsTurn) {
             // Same player continues (Wild Draw 4 in 2-player)
-            if (!isPlayerTurn) {
-                // Safety: ensure we do not toggle turn; just re-render current state
-                isPlayerTurn = !isPlayerTurn; // Keep it as the same player
-            }
             render();
         } else {
             // Plain Wild: pass the turn
             endTurn();
         }
+        // Reset flag after use
+        colorPickKeepsTurn = false;
     }
 
     function checkGameOver() {
