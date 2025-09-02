@@ -60,6 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let discardPile = [];
     let isPlayerTurn = true;
     let chosenColor = null; // For wild cards
+    let colorPickKeepsTurn = false; // When picking color after Wild/Wild+4, should the same player go again?
 
     // --- Game Logic ---
     const colors = ['red', 'yellow', 'green', 'blue'];
@@ -220,10 +221,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 turnEnds = false; // Player/AI gets another turn
                 break;
             case 'draw2':
+                // Next player draws 2 and loses their turn -> same player plays again (2-player rule)
                 drawCards(player === 'player' ? 'ai' : 'player', 2);
+                turnEnds = false;
                 break;
             case 'wild':
                 if (player === 'player') {
+                    // After choosing a color for plain Wild, turn passes to the next player
+                    colorPickKeepsTurn = false;
                     showColorPicker(card);
                     turnEnds = false; // Turn ends after color is picked
                 } else {
@@ -233,12 +238,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 return; // Exit because we are waiting for user input or AI has ended its turn
             case 'wild_draw4':
                 drawCards(player === 'player' ? 'ai' : 'player', 4);
-                 if (player === 'player') {
+                if (player === 'player') {
+                    // Next player draws 4 and loses their turn -> same player goes again (2-player rule)
+                    colorPickKeepsTurn = true;
                     showColorPicker(card);
-                    turnEnds = false; // Turn ends after color is picked
+                    // Do not endTurn here; after picking color we keep the same player's turn
                 } else {
                     chosenColor = chooseBestColorForAI();
-                    endTurn();
+                    // Keep AI's turn and schedule next AI move
+                    setTimeout(aiTurn, 600);
                 }
                 return;
         }
@@ -324,7 +332,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!e.target.classList.contains('color-option')) return;
         chosenColor = e.target.dataset.color;
         hideColorPicker();
-        endTurn();
+        if (colorPickKeepsTurn) {
+            // Same player continues (Wild Draw 4 in 2-player)
+            if (!isPlayerTurn) {
+                // Safety: ensure we do not toggle turn; just re-render current state
+                isPlayerTurn = !isPlayerTurn; // Keep it as the same player
+            }
+            render();
+        } else {
+            // Plain Wild: pass the turn
+            endTurn();
+        }
     }
 
     function checkGameOver() {
