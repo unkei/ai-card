@@ -96,6 +96,38 @@ h1 {
     left: 0;
 }
 
+/* Current color indicator */
+#current-color {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: 20px;
+    padding: 6px 10px;
+    background: rgba(255,255,255,0.85);
+    border: 1px solid #ddd;
+    border-radius: 8px;
+}
+
+#current-color .label {
+    color: #333;
+    font-weight: 600;
+}
+
+#current-color .color-swatch {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 2px solid #333;
+    background: #ccc;
+}
+
+#current-color .color-name {
+    min-width: 48px;
+    color: #333;
+    font-weight: 600;
+    text-transform: capitalize;
+}
+
 /* Card Colors */
 .card.red { background-color: #ff5555; color: white; }
 .card.yellow { background-color: #ffaa00; color: white; }
@@ -200,6 +232,15 @@ h1 {
         font-size: 24px;
     }
 
+    #current-color {
+        margin-left: 12px;
+        padding: 4px 8px;
+    }
+    #current-color .color-swatch {
+        width: 18px;
+        height: 18px;
+    }
+
     #discard-pile, #deck {
         width: 60px;
         height: 90px;
@@ -233,6 +274,16 @@ h1 {
         width: 45px;
         height: 70px;
         font-size: 20px;
+    }
+
+    #current-color {
+        gap: 6px;
+        margin-left: 8px;
+        padding: 3px 6px;
+    }
+    #current-color .color-swatch {
+        width: 16px;
+        height: 16px;
     }
 
     #discard-pile, #deck {

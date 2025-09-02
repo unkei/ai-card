@@ -8,6 +8,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const discardPileElement = document.getElementById('discard-pile');
     const colorPickerModal = document.getElementById('color-picker-modal');
     const colorOptions = document.querySelector('.color-options');
+    const currentColorContainer = document.getElementById('current-color');
+    const currentColorSwatch = currentColorContainer ? currentColorContainer.querySelector('.color-swatch') : null;
+    const currentColorName = currentColorContainer ? currentColorContainer.querySelector('.color-name') : null;
 
     // --- Three.js Flashy Background ---
     const bgCanvas = document.getElementById('three-bg');
@@ -148,6 +151,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 topCardElement.style.background = chosenColor;
             }
             discardPileElement.appendChild(topCardElement);
+        }
+
+        // Update Current Color indicator
+        if (currentColorContainer && currentColorSwatch && currentColorName) {
+            if (chosenColor) {
+                currentColorSwatch.style.background = chosenColor;
+                currentColorName.textContent = chosenColor;
+                currentColorContainer.style.visibility = 'visible';
+            } else {
+                currentColorSwatch.style.background = '#ccc';
+                currentColorName.textContent = '';
+                currentColorContainer.style.visibility = 'hidden';
+            }
         }
 
         // Update active turn indicator
