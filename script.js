@@ -15,6 +15,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Three.js Flashy Background ---
     const bgCanvas = document.getElementById('three-bg');
     let renderer, scene, camera, flashyObject;
+    let endGameMode = false;
+    let endGameGroup = null;
+    let endAnimStart = 0;
+    let endAnimPhase = 'idle'; // 'intro' | 'timelapse' | 'outro'
+    let endAnimDuration = 10000; // total ~10s
+    let endAnimTimeScale = 1;
+    let gameRestartScheduled = false;
 
     function initBackground() {
         scene = new THREE.Scene();
@@ -48,9 +55,46 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function animateBackground() {
         requestAnimationFrame(animateBackground);
-        flashyObject.rotation.x += 0.01;
-        flashyObject.rotation.y += 0.01;
+        if (!endGameMode) {
+            flashyObject.rotation.x += 0.01;
+            flashyObject.rotation.y += 0.01;
+            renderer.render(scene, camera);
+            return;
+        }
+
+        // End-game animation
+        const now = performance.now();
+        const t = (now - endAnimStart);
+
+        // Phase schedule: intro 0-4s, timelapse 4-7s, outro 7-10s
+        if (t < 4000) {
+            endAnimPhase = 'intro';
+            endAnimTimeScale = 1;
+            setEndgameBanner('');
+        } else if (t < 7000) {
+            endAnimPhase = 'timelapse';
+            endAnimTimeScale = 6; // speed up
+            setEndgameBanner('Time-lapse');
+        } else if (t < endAnimDuration) {
+            endAnimPhase = 'outro';
+            endAnimTimeScale = 1.5;
+            setEndgameBanner('');
+        }
+
+        // Bounce cubes and pan camera
+        updateEndGameScene(t / 1000, endAnimTimeScale);
+
         renderer.render(scene, camera);
+
+        // Finish and restart game
+        if (t >= endAnimDuration && !gameRestartScheduled) {
+            gameRestartScheduled = true;
+            teardownEndGameScene();
+            hideEndgameBanner();
+            setTimeout(() => {
+                startGame();
+            }, 400);
+        }
     }
 
     initBackground();
@@ -342,6 +386,87 @@ document.addEventListener('DOMContentLoaded', () => {
         return Object.keys(colorCounts).reduce((a, b) => colorCounts[a] > colorCounts[b] ? a : b);
     }
 
+    // --- End-game animation helpers ---
+    function buildEndGameScene() {
+        if (endGameGroup) scene.remove(endGameGroup);
+        endGameGroup = new THREE.Group();
+        const gridSize = 30; // 30 x 30 space
+        const half = gridSize / 2; // 15
+        const step = 3; // spacing
+        const boxGeo = new THREE.BoxGeometry(1.5, 1.5, 1.5);
+        const mat = new THREE.MeshNormalMaterial();
+        for (let x = -half; x <= half; x += step) {
+            for (let z = -half; z <= half; z += step) {
+                const mesh = new THREE.Mesh(boxGeo, mat);
+                mesh.position.set(x, 0, z);
+                mesh.userData.phase = Math.random() * Math.PI * 2;
+                endGameGroup.add(mesh);
+            }
+        }
+        scene.add(endGameGroup);
+    }
+
+    function updateEndGameScene(timeSeconds, timeScale) {
+        // Hide default object
+        flashyObject.visible = false;
+        if (!endGameGroup) return;
+        const bounceSpeed = 2.2 * timeScale;
+        const camSpeed = 2.5 * timeScale;
+        const amp = 2.0;
+        endGameGroup.children.forEach((mesh, i) => {
+            const phase = mesh.userData.phase || 0;
+            const y = Math.abs(Math.sin(timeSeconds * bounceSpeed + phase)) * amp;
+            mesh.position.y = y;
+        });
+        // Pan camera along X across ~30 units while looking at center
+        const panWidth = 30; // span across the 30-wide field
+        const startX = -panWidth / 2 - 10;
+        const endX = panWidth / 2 + 10;
+        const totalPanTime = endAnimDuration / 1000; // seconds
+        let u = Math.min(timeSeconds / totalPanTime, 1);
+        const x = startX + (endX - startX) * u;
+        camera.position.set(x, 18, 40);
+        camera.lookAt(0, 5, 0);
+    }
+
+    function teardownEndGameScene() {
+        if (endGameGroup) {
+            scene.remove(endGameGroup);
+            endGameGroup.traverse(obj => {
+                if (obj.geometry) obj.geometry.dispose?.();
+                if (obj.material) obj.material.dispose?.();
+            });
+            endGameGroup = null;
+        }
+        flashyObject.visible = true;
+        endGameMode = false;
+        endAnimPhase = 'idle';
+        endAnimTimeScale = 1;
+        gameRestartScheduled = false;
+    }
+
+    function startEndGameAnimation(winner) {
+        // Prepare the end-game scene and banner
+        endGameMode = true;
+        endAnimStart = performance.now();
+        buildEndGameScene();
+        setEndgameBanner(winner === 'player' ? 'You Win!' : 'AI Wins!');
+    }
+
+    function setEndgameBanner(text) {
+        const banner = document.getElementById('endgame-banner');
+        if (!banner) return;
+        const msg = banner.querySelector('.message');
+        if (msg) msg.textContent = text;
+        banner.classList.remove('hidden');
+    }
+
+    function hideEndgameBanner() {
+        const banner = document.getElementById('endgame-banner');
+        if (!banner) return;
+        banner.classList.add('hidden');
+    }
+
     function showColorPicker() {
         colorPickerModal.classList.remove('hidden');
     }
@@ -367,13 +492,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function checkGameOver() {
         if (playerHand.length === 0) {
-            alert('Congratulations! You won!');
-            startGame();
+            if (!endGameMode) startEndGameAnimation('player');
             return true;
         }
         if (aiHand.length === 0) {
-            alert('AI wins! Better luck next time.');
-            startGame();
+            if (!endGameMode) startEndGameAnimation('ai');
             return true;
         }
         return false;
