@@ -18,7 +18,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let endGameMode = false;
     let endGameGroup = null;
     let endAnimStart = 0;
-    let endAnimPhase = 'idle'; // 'intro' | 'timelapse' | 'outro'
+    let endAnimPrev = 0;
+    let endAnimPanProgress = 0; // accumulates scaled time for camera pan
+    let endAnimPhase = 'idle'; // 'intro' | 'slowmo' | 'outro'
     let endAnimDuration = 10000; // total ~10s
     let endAnimTimeScale = 1;
     let gameRestartScheduled = false;
@@ -65,24 +67,31 @@ document.addEventListener('DOMContentLoaded', () => {
         // End-game animation
         const now = performance.now();
         const t = (now - endAnimStart);
+        const dt = (now - endAnimPrev) / 1000;
+        endAnimPrev = now;
 
-        // Phase schedule: intro 0-4s, timelapse 4-7s, outro 7-10s
+        // Phase schedule: intro 0-4s, slow-mo 4-7s, outro 7-10s
         if (t < 4000) {
             endAnimPhase = 'intro';
             endAnimTimeScale = 1;
             setEndgameBanner('');
         } else if (t < 7000) {
-            endAnimPhase = 'timelapse';
-            endAnimTimeScale = 6; // speed up
-            setEndgameBanner('Time-lapse');
+            endAnimPhase = 'slowmo';
+            endAnimTimeScale = 0.35; // slow down
+            setEndgameBanner('Slow-mo');
         } else if (t < endAnimDuration) {
             endAnimPhase = 'outro';
             endAnimTimeScale = 1.5;
             setEndgameBanner('');
         }
 
+        // Accumulate scaled time for camera pan continuity
+        if (!Number.isNaN(dt) && dt > 0) {
+            endAnimPanProgress += dt * endAnimTimeScale;
+        }
+
         // Bounce cubes and pan camera
-        updateEndGameScene(t / 1000, endAnimTimeScale);
+        updateEndGameScene(t / 1000, endAnimTimeScale, endAnimPanProgress);
 
         renderer.render(scene, camera);
 
@@ -406,12 +415,11 @@ document.addEventListener('DOMContentLoaded', () => {
         scene.add(endGameGroup);
     }
 
-    function updateEndGameScene(timeSeconds, timeScale) {
+    function updateEndGameScene(timeSeconds, timeScale, panProgress) {
         // Hide default object
         flashyObject.visible = false;
         if (!endGameGroup) return;
         const bounceSpeed = 2.2 * timeScale;
-        const camSpeed = 2.5 * timeScale;
         const amp = 2.0;
         endGameGroup.children.forEach((mesh, i) => {
             const phase = mesh.userData.phase || 0;
@@ -423,7 +431,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const startX = -panWidth / 2 - 10;
         const endX = panWidth / 2 + 10;
         const totalPanTime = endAnimDuration / 1000; // seconds
-        let u = Math.min(timeSeconds / totalPanTime, 1);
+        // Use accumulated scaled time so mid-phase slow-mo actually slows the camera
+        let u = Math.min((panProgress || 0) / totalPanTime, 1);
         const x = startX + (endX - startX) * u;
         camera.position.set(x, 18, 40);
         camera.lookAt(0, 5, 0);
@@ -449,6 +458,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // Prepare the end-game scene and banner
         endGameMode = true;
         endAnimStart = performance.now();
+        endAnimPrev = endAnimStart;
+        endAnimPanProgress = 0;
         buildEndGameScene();
         setEndgameBanner(winner === 'player' ? 'You Win!' : 'AI Wins!');
     }
