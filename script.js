@@ -7,6 +7,9 @@ const acceleration = 0.0005;
 const turnDecel = 0.001;
 let steering = 0;
 let keySteer = 0;
+let dragSteer = 0;
+let isDragging = false;
+let dragStartX = 0;
 
 // Track dimensions
 const outerTrack = { width: 80, height: 40 };
@@ -120,7 +123,7 @@ function setupControls() {
             const res = await DeviceOrientationEvent.requestPermission();
             if (res === 'granted') {
                 window.addEventListener('deviceorientation', onOrientation);
-                info.textContent = 'Tilt to steer';
+                info.textContent = 'Drag or tilt to steer';
             }
         }, { once: true });
     } else {
@@ -134,6 +137,22 @@ function setupControls() {
     document.addEventListener('keyup', (e) => {
         if (e.code === 'ArrowLeft' || e.code === 'ArrowRight') keySteer = 0;
     });
+
+    document.addEventListener('pointerdown', (e) => {
+        isDragging = true;
+        dragStartX = e.clientX;
+    });
+    document.addEventListener('pointermove', (e) => {
+        if (isDragging) {
+            dragSteer = (dragStartX - e.clientX) * 0.005;
+        }
+    });
+    function endDrag() {
+        isDragging = false;
+        dragSteer = 0;
+    }
+    document.addEventListener('pointerup', endDrag);
+    document.addEventListener('pointercancel', endDrag);
 }
 
 function onOrientation(e) {
@@ -143,7 +162,7 @@ function onOrientation(e) {
 function animate() {
     requestAnimationFrame(animate);
 
-    const steer = steering + keySteer;
+    const steer = steering + keySteer + dragSteer;
     if (Math.abs(steer) > 0.05) {
         speed = Math.max(0, speed - turnDecel);
     } else {
