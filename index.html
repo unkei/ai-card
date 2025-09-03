@@ -3,52 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UNNO</title>
+    <title>Drive Game</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <canvas id="three-bg"></canvas>
-    <h1>UNNO</h1>
-
-    <div id="game-board">
-        <div id="ai-hand" class="hand">
-            <!-- AIの手札 -->
-        </div>
-
-        <div id="deck-area">
-            <div id="deck" class="card back"></div>
-            <div id="discard-pile"></div>
-            <div id="current-color">
-                <span class="label">Current Color:</span>
-                <div class="color-swatch" aria-label="current color swatch"></div>
-                <span class="color-name" aria-live="polite"></span>
-            </div>
-        </div>
-
-        <div id="player-hand" class="hand">
-            <!-- プレイヤーの手札 -->
-        </div>
-    </div>
-
-    <div id="color-picker-modal" class="modal-overlay hidden">
-        <div class="modal-content">
-            <h3>Choose a color:</h3>
-            <div class="color-options">
-                <div class="color-option red" data-color="red"></div>
-                <div class="color-option yellow" data-color="yellow"></div>
-                <div class="color-option green" data-color="green"></div>
-                <div class="color-option blue" data-color="blue"></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Endgame banner (messages like Win/Lose, Time-lapse) -->
-    <div id="endgame-banner" class="hidden" aria-live="polite">
-        <div class="box">
-            <span class="message"></span>
-        </div>
-    </div>
-
+    <canvas id="game"></canvas>
+    <div id="info">Tilt your device to steer<br>Turning slows you down</div>
     <script type="module" src="script.js"></script>
 </body>
 </html>
