@@ -22,3 +22,14 @@ html, body {
     font-family: sans-serif;
     text-align: center;
 }
+
+#speedometer {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    background: rgba(0, 0, 0, 0.5);
+    color: #fff;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-family: sans-serif;
+}
