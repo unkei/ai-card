@@ -11,12 +11,14 @@ let dragSteer = 0;
 let isDragging = false;
 let dragStartX = 0;
 
-// Track dimensions
-const outerTrack = { width: 80, height: 40 };
-const innerTrack = { width: 40, height: 10 };
+// Track data (spline-based closed circuit)
+const trackWidth = 8; // approximate width of the road in world units
+let trackSamples = []; // populated with { pos: Vector3, tangent: Vector3, normal: Vector3 }
 
 function init() {
     scene = new THREE.Scene();
+    // Blue sky background
+    scene.background = new THREE.Color(0x87ceeb);
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
     renderer = new THREE.WebGLRenderer({ antialias: true, canvas: document.getElementById('game') });
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -33,49 +35,60 @@ function init() {
     ground.rotation.x = -Math.PI / 2;
     scene.add(ground);
 
-    // Track surface
-    const shape = new THREE.Shape();
-    shape.moveTo(-outerTrack.width / 2, -outerTrack.height / 2);
-    shape.lineTo(outerTrack.width / 2, -outerTrack.height / 2);
-    shape.lineTo(outerTrack.width / 2, outerTrack.height / 2);
-    shape.lineTo(-outerTrack.width / 2, outerTrack.height / 2);
-    shape.lineTo(-outerTrack.width / 2, -outerTrack.height / 2);
+    // Build a closed race track from a Catmull-Rom spline
+    const controlXZ = [
+        [0, -26], [12, -26], [26, -20], [32, -6], [28, 8],
+        [15, 20], [-2, 26], [-20, 22], [-30, 8], [-30, -6],
+        [-22, -18], [-8, -24]
+    ];
+    const controlPts = controlXZ.map(([x, z]) => new THREE.Vector3(x, 0, z));
+    const curve = new THREE.CatmullRomCurve3(controlPts, true, 'catmullrom', 0.1);
 
-    const hole = new THREE.Path();
-    hole.moveTo(-innerTrack.width / 2, -innerTrack.height / 2);
-    hole.lineTo(innerTrack.width / 2, -innerTrack.height / 2);
-    hole.lineTo(innerTrack.width / 2, innerTrack.height / 2);
-    hole.lineTo(-innerTrack.width / 2, innerTrack.height / 2);
-    hole.lineTo(-innerTrack.width / 2, -innerTrack.height / 2);
-    shape.holes.push(hole);
-
-    const trackGeo = new THREE.ExtrudeGeometry(shape, { depth: 0.1, bevelEnabled: false });
-    const trackMat = new THREE.MeshPhongMaterial({ color: 0x555555 });
-    const track = new THREE.Mesh(trackGeo, trackMat);
-    track.rotation.x = -Math.PI / 2;
-    track.position.y = 0.01;
-    scene.add(track);
-
-    // Track walls
-    const wallMat = new THREE.MeshPhongMaterial({ color: 0x888888 });
-    const wallH = 1;
-    const wallT = 1;
-    function addWall(x, z, w, h) {
-        const geo = new THREE.BoxGeometry(w, wallH, h);
-        const wall = new THREE.Mesh(geo, wallMat);
-        wall.position.set(x, wallH / 2, z);
-        scene.add(wall);
+    const samples = 400;
+    trackSamples = [];
+    const leftPts = [];
+    const rightPts = [];
+    for (let i = 0; i < samples; i++) {
+        const u = i / samples;
+        const p = curve.getPointAt(u);
+        const t = curve.getTangentAt(u).setY(0).normalize();
+        const n = new THREE.Vector3(-t.z, 0, t.x).normalize();
+        const half = trackWidth / 2;
+        const left = p.clone().addScaledVector(n, half);
+        const right = p.clone().addScaledVector(n, -half);
+        left.y = 0.02; // slightly above ground
+        right.y = 0.02;
+        leftPts.push(left);
+        rightPts.push(right);
+        trackSamples.push({ pos: p.clone(), tangent: t.clone(), normal: n.clone() });
     }
 
-    addWall(0, -outerTrack.height / 2, outerTrack.width, wallT); // outer top
-    addWall(0, outerTrack.height / 2, outerTrack.width, wallT); // outer bottom
-    addWall(-outerTrack.width / 2, 0, wallT, outerTrack.height); // outer left
-    addWall(outerTrack.width / 2, 0, wallT, outerTrack.height); // outer right
-
-    addWall(0, -innerTrack.height / 2, innerTrack.width, wallT); // inner top
-    addWall(0, innerTrack.height / 2, innerTrack.width, wallT); // inner bottom
-    addWall(-innerTrack.width / 2, 0, wallT, innerTrack.height); // inner left
-    addWall(innerTrack.width / 2, 0, wallT, innerTrack.height); // inner right
+    // Build road mesh as a triangle strip between left and right edges
+    const positions = new Float32Array(samples * 2 * 3);
+    const normals = new Float32Array(samples * 2 * 3);
+    const indices = [];
+    for (let i = 0; i < samples; i++) {
+        const li = i * 2 * 3;
+        const l = leftPts[i];
+        const r = rightPts[i];
+        positions[li + 0] = l.x; positions[li + 1] = l.y; positions[li + 2] = l.z;
+        positions[li + 3] = r.x; positions[li + 4] = r.y; positions[li + 5] = r.z;
+        // Upward normals for both vertices
+        normals[li + 0] = 0; normals[li + 1] = 1; normals[li + 2] = 0;
+        normals[li + 3] = 0; normals[li + 4] = 1; normals[li + 5] = 0;
+        const i0 = i * 2;
+        const i1 = i * 2 + 1;
+        const i2 = ((i + 1) % samples) * 2;
+        const i3 = ((i + 1) % samples) * 2 + 1;
+        indices.push(i0, i1, i3, i0, i3, i2);
+    }
+    const roadGeo = new THREE.BufferGeometry();
+    roadGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    roadGeo.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
+    roadGeo.setIndex(indices);
+    const roadMat = new THREE.MeshPhongMaterial({ color: 0x555555, side: THREE.DoubleSide });
+    const road = new THREE.Mesh(roadGeo, roadMat);
+    scene.add(road);
 
     // Car
     car = new THREE.Group();
@@ -106,8 +119,16 @@ function init() {
         });
     });
     scene.add(car);
+    // Place car on the track start and align with tangent
+    if (trackSamples.length > 0) {
+        const start = trackSamples[0];
+        car.position.set(start.pos.x, car.position.y, start.pos.z);
+        const fx = start.tangent.x, fz = start.tangent.z;
+        car.rotation.y = Math.atan2(fx, fz) + Math.PI; // align forward (-Z base) to tangent
+    }
 
-    camera.position.set(0, 2, 5);
+    // Raise camera a bit
+    camera.position.set(0, 3, 5);
     camera.lookAt(car.position);
 
     window.addEventListener('resize', onWindowResize);
@@ -173,29 +194,32 @@ function animate() {
     const dir = new THREE.Vector3(0, 0, -1).applyEuler(car.rotation).multiplyScalar(speed);
     car.position.add(dir);
 
-    // Collision with track walls
-    const outerX = outerTrack.width / 2 - 0.5;
-    const outerZ = outerTrack.height / 2 - 0.5;
-    const innerX = innerTrack.width / 2 + 0.5;
-    const innerZ = innerTrack.height / 2 + 0.5;
-
-    if (car.position.x > outerX) { car.position.x = outerX; speed = 0; }
-    if (car.position.x < -outerX) { car.position.x = -outerX; speed = 0; }
-    if (car.position.z > outerZ) { car.position.z = outerZ; speed = 0; }
-    if (car.position.z < -outerZ) { car.position.z = -outerZ; speed = 0; }
-
-    if (car.position.x < innerX && car.position.x > -innerX && car.position.z < innerZ && car.position.z > -innerZ) {
-        const dx = innerX - Math.abs(car.position.x);
-        const dz = innerZ - Math.abs(car.position.z);
-        if (dx < dz) {
-            car.position.x = Math.sign(car.position.x) * innerX;
-        } else {
-            car.position.z = Math.sign(car.position.z) * innerZ;
+    // Clamp car within track width using nearest point on the spline (sampled)
+    if (trackSamples.length > 0) {
+        let nearest = 0;
+        let minD2 = Infinity;
+        for (let i = 0; i < trackSamples.length; i++) {
+            const p = trackSamples[i].pos;
+            const dx = car.position.x - p.x;
+            const dz = car.position.z - p.z;
+            const d2 = dx * dx + dz * dz;
+            if (d2 < minD2) { minD2 = d2; nearest = i; }
         }
-        speed = 0;
+        const s = trackSamples[nearest];
+        const nx = s.normal.x, nz = s.normal.z;
+        const relX = car.position.x - s.pos.x;
+        const relZ = car.position.z - s.pos.z;
+        const lateral = relX * nx + relZ * nz; // signed perpendicular distance to centerline
+        const half = trackWidth / 2;
+        if (Math.abs(lateral) > half) {
+            const clamped = Math.sign(lateral) * half;
+            car.position.x = s.pos.x + nx * clamped;
+            car.position.z = s.pos.z + nz * clamped;
+            speed = 0; // hit the boundary -> stop
+        }
     }
 
-    camera.position.lerp(car.position.clone().add(new THREE.Vector3(0, 2, 5).applyEuler(car.rotation)), 0.1);
+    camera.position.lerp(car.position.clone().add(new THREE.Vector3(0, 3, 5).applyEuler(car.rotation)), 0.1);
     camera.lookAt(car.position);
 
     if (speedometer) {
